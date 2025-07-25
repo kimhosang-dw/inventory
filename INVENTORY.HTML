@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>생산/재고 관리 프로그램</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & Noto Sans KR -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Custom Styles -->
+    <style>
+        /* #페이지-초기화 */
+        body {
+            font-family: 'Noto Sans KR', 'Inter', sans-serif;
+            background-color: #f3f4f6; /* bg-gray-100 */
+        }
+        /* 로딩 스피너 스타일 */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3b82f6; /* border-blue-500 */
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* 페이지 전환 효과 */
+        .page {
+            transition: opacity 0.5s ease-in-out;
+        }
+        .page.hidden {
+            display: none;
+        }
+        /* 자동 높이 조절 textarea */
+        textarea {
+            resize: vertical;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- #상단-고정-헤더 -->
+    <header class="bg-white shadow-sm sticky top-0 z-40 h-16 flex items-center">
+        <div class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 flex justify-end items-center">
+             <select id="language-selector" class="bg-white border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                <option value="ko">한국어</option>
+                <option value="si">සිංහල</option>
+            </select>
+        </div>
+    </header>
+
+    <!-- App Container -->
+    <div id="app-container">
+        <!-- #페이지-로그인 -->
+        <div id="login-page" class="page min-h-[calc(100vh-4rem)] flex items-center justify-center p-4">
+            <div class="w-full max-w-md bg-white p-8 rounded-xl shadow-lg">
+                <h1 class="text-3xl font-bold text-center text-gray-800 mb-2">생산/재고 관리</h1>
+                <p class="text-center text-gray-500 mb-8">사용자를 선택하거나 새롭게 등록하세요.</p>
+                <div class="mb-6"><label class="block text-sm font-medium text-gray-700 mb-2">새 사용자 등록</label><div class="flex"><input type="text" id="new-user-input" class="flex-grow appearance-none border border-gray-300 rounded-l-md px-3 py-2 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500" placeholder="사용자명을 입력하세요"><button id="register-btn" class="bg-indigo-600 text-white px-4 py-2 rounded-r-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-indigo-300">등록</button></div></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-2">기존 사용자 선택</label><div id="user-list-container" class="space-y-2"><div id="loader" class="flex justify-center py-4"><div class="loader"></div></div></div></div>
+                <div id="status-message" class="mt-4 text-center text-sm text-green-600 font-medium"></div>
+            </div>
+        </div>
+
+        <!-- #페이지-메인 -->
+        <div id="main-page" class="page hidden min-h-[calc(100vh-4rem)] flex items-center justify-center p-4">
+             <div class="w-full max-w-2xl">
+                <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-8"><div><h2 id="welcome-message" class="text-3xl font-bold text-gray-800"></h2><p class="text-gray-500 mt-1">원하시는 작업을 선택하세요.</p></div><button id="logout-btn" class="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 mt-4 sm:mt-0">로그아웃</button></div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div data-page="work-order-page" class="main-menu-btn group bg-white p-6 rounded-xl shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer"><div class="flex items-center space-x-4"><div class="bg-sky-100 p-4 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-sky-600"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div><div><h3 class="text-lg font-bold text-gray-800 group-hover:text-sky-600">작업지시</h3><p class="text-sm text-gray-500">일일 생산 계획을 등록하고 관리합니다.</p></div></div></div>
+                    <div data-page="production-input-page" class="main-menu-btn group bg-white p-6 rounded-xl shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer"><div class="flex items-center space-x-4"><div class="bg-teal-100 p-4 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-teal-600"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div><div><h3 class="text-lg font-bold text-gray-800 group-hover:text-teal-600">생산량 입력</h3><p class="text-sm text-gray-500">작업지시서 기반으로 생산량을 입력합니다.</p></div></div></div>
+                    <div data-page="inventory-io-page" class="main-menu-btn group bg-white p-6 rounded-xl shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer"><div class="flex items-center space-x-4"><div class="bg-amber-100 p-4 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-amber-600"><path d="M12 1v22m-5-17-5 5 5 5m10-5 5 5-5 5"/></svg></div><div><h3 class="text-lg font-bold text-gray-800 group-hover:text-amber-600">입고 / 출고</h3><p class="text-sm text-gray-500">원재료 및 생산품의 입출고를 관리합니다.</p></div></div></div>
+                    <div data-page="stock-history-page" class="main-menu-btn group bg-white p-6 rounded-xl shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer"><div class="flex items-center space-x-4"><div class="bg-violet-100 p-4 rounded-full"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-violet-600"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></div><div><h3 class="text-lg font-bold text-gray-800 group-hover:text-violet-600">재고 및 내역</h3><p class="text-sm text-gray-500">현재 재고 현황과 모든 내역을 조회합니다.</p></div></div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- #페이지-작업지시 -->
+        <div id="work-order-page" class="page hidden p-4 sm:p-6 lg:p-8">
+            <div class="max-w-7xl mx-auto">
+                <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-6"><h1 class="text-3xl font-bold text-gray-800">작업지시서</h1><div class="flex items-center space-x-4 mt-4 sm:mt-0"><button id="back-to-main-btn-1" class="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700">메인으로</button><button id="save-work-order-btn" class="bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700 font-bold disabled:bg-green-300">저장</button></div></div>
+                <div class="bg-white p-6 rounded-xl shadow-md mb-6"><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"><div><label class="block text-sm font-medium text-gray-700">날짜</label><input type="date" id="work-order-date" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"></div><div><label class="block text-sm font-medium text-gray-700">전달사항</label><textarea id="delivery-notes" rows="1" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="전달사항 입력..."></textarea></div><div class="p-3 bg-blue-50 rounded-lg"><p class="text-sm text-blue-800 font-medium">일일 생산량</p><p id="daily-total" class="text-2xl font-bold text-blue-900">0 kg</p></div><div class="p-3 bg-purple-50 rounded-lg"><p class="text-sm text-purple-800 font-medium">금월 누적생산량</p><p id="monthly-total" class="text-2xl font-bold text-purple-900">0 kg</p></div></div></div>
+                <div id="attendance-section" class="bg-white p-6 rounded-xl shadow-md mb-6"><h2 class="text-xl font-bold mb-4">근태</h2><div class="grid grid-cols-1 md:grid-cols-2 gap-6"><div class="border border-gray-200 p-4 rounded-lg"><h3 class="font-bold text-lg text-yellow-600 mb-3">주간 근무자</h3><div id="day-shift-workers" class="space-y-4 mb-4"></div><button data-shift="day" class="add-worker-btn w-full bg-gray-200 text-gray-700 py-2 rounded-md hover:bg-gray-300 flex items-center justify-center space-x-2"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg><span>근무자 추가</span></button></div><div class="border border-gray-200 p-4 rounded-lg"><h3 class="font-bold text-lg text-indigo-600 mb-3">야간 근무자</h3><div id="night-shift-workers" class="space-y-4 mb-4"></div><button data-shift="night" class="add-worker-btn w-full bg-gray-200 text-gray-700 py-2 rounded-md hover:bg-gray-300 flex items-center justify-center space-x-2"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg><span>근무자 추가</span></button></div></div></div>
+                <div id="machine-sections-container" class="space-y-6"></div>
+            </div>
+        </div>
+
+        <!-- #추가-페이지-생산량입력 -->
+        <div id="production-input-page" class="page hidden p-4 sm:p-6 lg:p-8">
+            <div class="max-w-7xl mx-auto">
+                <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-6"><h1 class="text-3xl font-bold text-gray-800">생산량 입력</h1><button id="back-to-main-btn-2" class="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 mt-4 sm:mt-0">메인으로</button></div>
+                
+                <!-- 검색 영역 -->
+                <div class="bg-white p-6 rounded-xl shadow-md mb-6">
+                    <h2 class="text-xl font-bold mb-4">작업지시서 검색</h2>
+                    <div class="flex flex-col sm:flex-row items-center gap-4">
+                        <input type="date" id="search-start-date" class="w-full sm:w-auto border-gray-300 rounded-md shadow-sm">
+                        <span class="text-gray-500">~</span>
+                        <input type="date" id="search-end-date" class="w-full sm:w-auto border-gray-300 rounded-md shadow-sm">
+                        <button id="search-work-orders-btn" class="w-full sm:w-auto bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700">검색</button>
+                    </div>
+                </div>
+
+                <!-- 검색 결과 및 상세 뷰 -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- 목록 -->
+                    <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-md">
+                        <h3 class="font-bold mb-4">작업지시서 목록</h3>
+                        <div id="work-order-list" class="space-y-2 max-h-96 overflow-y-auto">
+                            <p class="text-gray-500 text-center">검색 결과가 여기에 표시됩니다.</p>
+                        </div>
+                    </div>
+                    <!-- 상세 내용 -->
+                    <div id="production-input-details" class="lg:col-span-2 bg-white p-6 rounded-xl shadow-md hidden">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-bold text-xl">상세 정보 (<span id="selected-wo-date"></span>)</h3>
+                             <button id="save-production-input-btn" class="bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700 font-bold disabled:bg-green-300">수정사항 저장</button>
+                        </div>
+                        <div id="production-input-form-container" class="space-y-4">
+                           <!-- 선택된 작업지시서 내용이 여기에 표시됩니다. -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- #모달-영역 -->
+    <div id="modal-container">
+        <div id="worker-modal" class="modal fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50 p-4"><div class="bg-white rounded-lg shadow-xl w-full max-w-sm p-6"><h3 class="text-lg font-bold mb-4">근무자 선택</h3><div id="modal-worker-list" class="space-y-2 max-h-60 overflow-y-auto mb-4"></div><div class="flex justify-end space-x-2"><button data-close-modal="worker-modal" class="modal-close-btn bg-gray-300 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-400">닫기</button></div></div></div>
+        <div id="load-template-modal" class="modal fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50 p-4"><div class="bg-white rounded-lg shadow-xl w-full max-w-lg p-6"><h3 class="text-lg font-bold mb-4">제품 템플릿 불러오기</h3><div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4"><input type="text" id="filter-company" class="border-gray-300 rounded-md shadow-sm text-sm" placeholder="업체명으로 검색..."><input type="text" id="filter-item" class="border-gray-300 rounded-md shadow-sm text-sm" placeholder="품목으로 검색..."></div><div id="modal-template-list" class="space-y-2 max-h-80 overflow-y-auto mb-4 border-t pt-4"></div><div class="flex justify-end space-x-2 mt-4"><button data-close-modal="load-template-modal" class="modal-close-btn bg-gray-300 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-400">닫기</button></div></div></div>
+        <div id="delete-confirm-modal" class="modal fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50 p-4"><div class="bg-white rounded-lg shadow-xl w-full max-w-sm p-6"><h3 class="text-lg font-bold mb-2">템플릿 삭제</h3><p id="delete-confirm-message" class="text-sm text-gray-600 mb-6">정말로 이 템플릿을 삭제하시겠습니까?</p><div class="flex justify-end space-x-2"><button data-close-modal="delete-confirm-modal" class="modal-close-btn bg-gray-300 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-400">취소</button><button id="delete-confirm-btn" class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700">삭제</button></div></div></div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        // #Firebase-초기화
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, getDocs, addDoc, doc, setDoc, onSnapshot, getDoc, deleteDoc, query, where, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBfpxEX8Orny65F-39gB3eikqddVqRjJW0",
+            authDomain: "inventory-1cd47.firebaseapp.com",
+            projectId: "inventory-1cd47",
+            storageBucket: "inventory-1cd47.appspot.com",
+            messagingSenderId: "457081542611",
+            appId: "1:457081542611:web:1c78706d660be49b32c126"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // #DOM-요소-가져오기
+        const pages = document.querySelectorAll('.page');
+        const loginPage = document.getElementById('login-page');
+        const mainPage = document.getElementById('main-page');
+        const newUserInput = document.getElementById('new-user-input');
+        const registerBtn = document.getElementById('register-btn');
+        const userListContainer = document.getElementById('user-list-container');
+        const loader = document.getElementById('loader');
+        const welcomeMessage = document.getElementById('welcome-message');
+        const logoutBtn = document.getElementById('logout-btn');
+        const languageSelector = document.getElementById('language-selector');
+        const mainMenuButtons = document.querySelectorAll('.main-menu-btn');
+        const backToMainBtn1 = document.getElementById('back-to-main-btn-1');
+        const backToMainBtn2 = document.getElementById('back-to-main-btn-2');
+        const workOrderDateInput = document.getElementById('work-order-date');
+        const deliveryNotes = document.getElementById('delivery-notes');
+        const dayShiftWorkersContainer = document.getElementById('day-shift-workers');
+        const nightShiftWorkersContainer = document.getElementById('night-shift-workers');
+        const machineSectionsContainer = document.getElementById('machine-sections-container');
+        const saveWorkOrderBtn = document.getElementById('save-work-order-btn');
+        
+        // 생산량 입력 페이지 DOM
+        const searchStartDateInput = document.getElementById('search-start-date');
+        const searchEndDateInput = document.getElementById('search-end-date');
+        const searchWorkOrdersBtn = document.getElementById('search-work-orders-btn');
+        const workOrderListContainer = document.getElementById('work-order-list');
+        const prodInputDetailsContainer = document.getElementById('production-input-details');
+        const prodInputFormContainer = document.getElementById('production-input-form-container');
+        const selectedWODateSpan = document.getElementById('selected-wo-date');
+        const saveProdInputBtn = document.getElementById('save-production-input-btn');
+
+        // 모달 관련 DOM
+        const modals = document.querySelectorAll('.modal');
+        const modalCloseBtns = document.querySelectorAll('.modal-close-btn');
+        const modalTemplateList = document.getElementById('modal-template-list');
+        const filterCompanyInput = document.getElementById('filter-company');
+        const filterItemInput = document.getElementById('filter-item');
+        const deleteConfirmBtn = document.getElementById('delete-confirm-btn');
+        const deleteConfirmMessage = document.getElementById('delete-confirm-message');
+
+        let currentSessionId = null; 
+        let productTemplatesCache = [];
+        let templateIdToDelete = null;
+        let currentShift = null;
+        let currentWorkOrderData = null;
+
+        // #알림-함수
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            const bgColor = type === 'success' ? 'bg-green-500' : 'bg-red-500';
+            notification.className = `fixed bottom-5 right-5 ${bgColor} text-white py-2 px-4 rounded-lg shadow-lg transition-opacity duration-300 z-50`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            setTimeout(() => { notification.classList.add('opacity-0'); setTimeout(() => notification.remove(), 300); }, 3000);
+        }
+
+        // #페이지-전환-함수
+        function showPage(pageId) { 
+            pages.forEach(page => { 
+                if (page.id === pageId) { 
+                    page.classList.remove('hidden'); 
+                    setTimeout(() => page.classList.remove('opacity-0'), 10);
+                    if (pageId === 'work-order-page') {
+                        loadWorkOrder(workOrderDateInput.value);
+                    }
+                } else { 
+                    page.classList.add('opacity-0'); 
+                    setTimeout(() => page.classList.add('hidden'), 500); 
+                } 
+            }); 
+        }
+
+        // #모달-관리-함수
+        function openModal(modalId) { document.getElementById(modalId)?.classList.replace('hidden', 'flex'); }
+        function closeModal(modalId) { document.getElementById(modalId)?.classList.replace('flex', 'hidden'); }
+
+        // #사용자-관리-함수
+        function renderUserList(users) {
+            userListContainer.innerHTML = ''; 
+            if (users.length === 0) { userListContainer.innerHTML = `<p class="text-center text-gray-500 text-sm">등록된 사용자가 없습니다.</p>`; return; }
+            users.forEach(user => {
+                const userButton = document.createElement('button');
+                userButton.textContent = user.name;
+                userButton.className = "w-full text-left bg-gray-100 p-3 rounded-md hover:bg-gray-200 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500";
+                userButton.onclick = () => login(user.name);
+                userListContainer.appendChild(userButton);
+            });
+        }
+        async function registerUser() {
+            const userName = newUserInput.value.trim();
+            if (!userName) { showNotification('사용자명을 입력해주세요.', 'error'); return; }
+            registerBtn.disabled = true;
+            try {
+                await setDoc(doc(db, "users", userName), { name: userName });
+                newUserInput.value = '';
+                showNotification(`${userName}님, 환영합니다!`);
+            } catch (error) { console.error("Error:", error); showNotification('등록 중 오류가 발생했습니다.', 'error'); } 
+            finally { registerBtn.disabled = false; }
+        }
+        function login(userName) {
+            localStorage.setItem('currentUser', userName);
+            welcomeMessage.textContent = `${userName}님, 안녕하세요.`;
+            showPage('main-page');
+        }
+        function logout() {
+            localStorage.removeItem('currentUser');
+            showPage('login-page');
+        }
+
+        // #근태-관리-함수
+        function addWorkerToUI(name, shift, data = {}) {
+            const container = shift === 'day' ? dayShiftWorkersContainer : nightShiftWorkersContainer;
+            const startTime = data.startTime || (shift === 'day' ? '08:00' : '19:00');
+            const endTime = data.endTime || (shift === 'day' ? '19:00' : '08:00');
+            const notes = data.notes || '';
+            const workerId = `worker-${shift}-${Date.now()}`;
+            const workerEl = document.createElement('div');
+            workerEl.id = workerId;
+            workerEl.className = 'p-3 bg-gray-50 rounded-lg border';
+            workerEl.innerHTML = `
+                <div class="flex justify-between items-center mb-2">
+                    <span class="font-semibold text-gray-800" data-name="${name}">${name}</span>
+                    <button data-remove-id="${workerId}" class="remove-worker-btn text-red-500 hover:text-red-700"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>
+                </div>
+                <div class="grid grid-cols-[1fr_auto_1fr] gap-x-2 items-center mb-2">
+                    <input type="time" value="${startTime}" class="w-full border-gray-300 rounded-md shadow-sm text-sm worker-starttime">
+                    <span class="text-gray-500">~</span>
+                    <input type="time" value="${endTime}" class="w-full border-gray-300 rounded-md shadow-sm text-sm worker-endtime">
+                </div>
+                <input type="text" value="${notes}" placeholder="특이사항" class="w-full border-gray-300 rounded-md shadow-sm text-sm worker-notes">`;
+            container.appendChild(workerEl);
+        }
+        function populateWorkerModal(users) {
+            const modalWorkerList = document.getElementById('modal-worker-list');
+            modalWorkerList.innerHTML = '';
+            users.forEach(user => {
+                const button = document.createElement('button');
+                button.textContent = user.name;
+                button.className = 'w-full text-left p-2 rounded-md hover:bg-gray-100';
+                button.onclick = () => { addWorkerToUI(user.name, currentShift); closeModal('worker-modal'); };
+                modalWorkerList.appendChild(button);
+            });
+        }
+
+        // #작업지시-기계-세션-관리-함수
+        function createWorkSessionElement(machineNum, shift, data = {}, isReadOnly = false) {
+            const sessionId = data.id || `session-${machineNum}-${shift}-${Date.now()}`;
+            const el = document.createElement('div');
+            el.id = sessionId;
+            el.className = 'bg-gray-50 border border-gray-200 rounded-lg p-4';
+            const disabledAttr = isReadOnly ? 'disabled' : '';
+            const editableFields = ['bagNo', 'prodQty'];
+
+            const fields = [
+                { label: '업체명', field: 'companyName', type: 'text' },
+                { label: '품목', field: 'itemName', type: 'text' },
+                { label: 'GRADE', field: 'grade', type: 'text' },
+                { label: '망(Mesh)', field: 'mesh', type: 'text' },
+                { label: '온도(℃)', field: 'temp', type: 'range' },
+                { label: '포장중량(kg)', field: 'packWeight', type: 'text' },
+                { label: '포장사양', field: 'packSpec', type: 'text', placeholder: 'bag/지대' },
+                { label: '배합LOT', field: 'mixLot', type: 'text', section: 'prod' },
+                { label: '라벨LOT', field: 'labelLot', type: 'text', section: 'prod' },
+                { label: 'BAG NO', field: 'bagNo', type: 'text', section: 'prod' },
+                { label: '생산량(kg)', field: 'prodQty', type: 'number', section: 'prod' },
+                { label: 'TEST/SAMPLE', field: 'testSample', type: 'text', section: 'prod' },
+                { label: 'Loss/떡', field: 'loss', type: 'text', section: 'prod' },
+                { label: '비고', field: 'notes', type: 'text', section: 'prod', span: 'sm:col-span-2' },
+            ];
+            
+            let productInfoHtml = '<div class="lg:col-span-4"><h4 class="font-semibold text-gray-600 border-b pb-1 mb-2">제품 정보</h4></div>';
+            let productionInfoHtml = '<div class="lg:col-span-4"><h4 class="font-semibold text-gray-600 border-b pb-1 my-2">생산 정보</h4></div>';
+
+            fields.forEach(f => {
+                const currentDisabled = isReadOnly && !editableFields.includes(f.field) ? 'disabled' : '';
+                let inputHtml = '';
+                if(f.type === 'range') {
+                    inputHtml = `<div class="mt-1 grid grid-cols-[1fr_auto_1fr] gap-x-2 items-center"><input type="text" data-field="tempMin" class="input-field" value="${data.tempMin || ''}" ${disabledAttr}><span class="text-gray-500">~</span><input type="text" data-field="tempMax" class="input-field" value="${data.tempMax || ''}" ${disabledAttr}></div>`;
+                } else {
+                    inputHtml = `<input type="${f.type}" data-field="${f.field}" class="input-field" value="${data[f.field] || ''}" ${f.placeholder ? `placeholder="${f.placeholder}"` : ''} ${currentDisabled}>`;
+                }
+
+                const fieldHtml = `<div class="${f.span || ''}"><label class="text-sm font-medium">${f.label}</label>${inputHtml}</div>`;
+                
+                if (f.section === 'prod') productionInfoHtml += fieldHtml;
+                else productInfoHtml += fieldHtml;
+            });
+            
+            let buttonsHtml = '';
+            if (!isReadOnly) {
+                buttonsHtml = `<div class="sm:col-span-2 md:col-span-1"><label class="text-sm font-medium invisible">.</label><div class="flex space-x-2"><button data-session-id="${sessionId}" class="load-template-btn btn-sm btn-secondary">불러오기</button><button data-session-id="${sessionId}" class="save-template-btn btn-sm btn-primary">템플릿 저장</button></div></div>`;
+            }
+
+            el.innerHTML = `
+                ${isReadOnly ? '' : `<div class="flex justify-end mb-2"><button data-remove-id="${sessionId}" class="remove-session-btn text-red-500 hover:text-red-700"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>`}
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    ${productInfoHtml}
+                    ${buttonsHtml}
+                    ${productionInfoHtml}
+                </div>`;
+
+            el.querySelectorAll('.input-field').forEach(i => i.classList.add('mt-1', 'w-full', 'border-gray-300', 'rounded-md', 'shadow-sm', 'text-sm', 'disabled:bg-gray-100', 'disabled:text-gray-500'));
+            el.querySelectorAll('.btn-sm').forEach(b => b.classList.add('px-3', 'py-1', 'rounded-md', 'text-sm', 'font-semibold'));
+            el.querySelector('.btn-primary')?.classList.add('bg-blue-600', 'text-white', 'hover:bg-blue-700');
+            el.querySelector('.btn-secondary')?.classList.add('bg-gray-200', 'text-gray-800', 'hover:bg-gray-300');
+            return el;
+        }
+        function addWorkSession(machineNum, shift, data) {
+            const sessionElement = createWorkSessionElement(machineNum, shift, data, false);
+            document.getElementById(`machine-${machineNum}-${shift}-sessions`).appendChild(sessionElement);
+        }
+        function initializeMachineSections() {
+            for (let i = 1; i <= 3; i++) {
+                const machineEl = document.createElement('div');
+                machineEl.className = 'bg-white rounded-xl shadow-md';
+                machineEl.innerHTML = `<h2 class="px-6 py-4 text-xl font-bold border-b border-gray-200">${i}호기</h2><div class="p-6"><div class="mb-6"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-lg text-yellow-600">주간</h3><button data-machine="${i}" data-shift="day" class="add-session-btn text-sm bg-yellow-500 text-white font-semibold py-1 px-3 rounded-md hover:bg-yellow-600">세션 추가</button></div><div id="machine-${i}-day-sessions" class="space-y-4"></div></div><div><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-lg text-indigo-600">야간</h3><button data-machine="${i}" data-shift="night" class="add-session-btn text-sm bg-indigo-500 text-white font-semibold py-1 px-3 rounded-md hover:bg-indigo-600">세션 추가</button></div><div id="machine-${i}-night-sessions" class="space-y-4"></div></div><div class="mt-4 border-t pt-4"><button data-machine="${i}" class="copy-to-night-btn w-full text-sm bg-gray-600 text-white font-semibold py-2 px-3 rounded-md hover:bg-gray-700">주간 마지막 세션 내용 → 야간 새 세션으로 복사</button></div></div>`;
+                machineSectionsContainer.appendChild(machineEl);
+            }
+        }
+        
+        // #템플릿-관리-함수
+        async function saveProductTemplate(sessionId) {
+            const sessionEl = document.getElementById(sessionId);
+            if (!sessionEl) { showNotification('세션 정보를 찾을 수 없습니다.', 'error'); return; }
+            const companyName = sessionEl.querySelector('[data-field="companyName"]').value.trim();
+            const itemName = sessionEl.querySelector('[data-field="itemName"]').value.trim();
+            const grade = sessionEl.querySelector('[data-field="grade"]').value.trim();
+            if (!companyName || !itemName || !grade) { showNotification('템플릿 이름 생성을 위해 업체명, 품목, GRADE를 모두 입력해주세요.', 'error'); return; }
+            const templateName = `${companyName}_${itemName}_${grade}`;
+            const productInfo = { companyName, itemName, grade, mesh: sessionEl.querySelector('[data-field="mesh"]').value, tempMin: sessionEl.querySelector('[data-field="tempMin"]').value, tempMax: sessionEl.querySelector('[data-field="tempMax"]').value, packWeight: sessionEl.querySelector('[data-field="packWeight"]').value, packSpec: sessionEl.querySelector('[data-field="packSpec"]').value, };
+            try { await setDoc(doc(db, "product_templates", templateName), productInfo); showNotification(`'${templateName.replace(/_/g, ' ')}' 템플릿이 저장되었습니다.`); } 
+            catch (error) { console.error("템플릿 저장 오류: ", error); showNotification('템플릿 저장 중 오류가 발생했습니다.', 'error'); }
+        }
+        function renderTemplateList() {
+            const filterCompany = filterCompanyInput.value.toLowerCase();
+            const filterItem = filterItemInput.value.toLowerCase();
+            const filteredTemplates = productTemplatesCache.filter(template => { const companyMatch = template.data.companyName.toLowerCase().includes(filterCompany); const itemMatch = template.data.itemName.toLowerCase().includes(filterItem); return companyMatch && itemMatch; });
+            modalTemplateList.innerHTML = '';
+            if (filteredTemplates.length === 0) { modalTemplateList.innerHTML = '<p class="text-center text-gray-500">일치하는 템플릿이 없습니다.</p>'; return; }
+            filteredTemplates.forEach((template) => {
+                const itemEl = document.createElement('div');
+                itemEl.className = 'flex justify-between items-center p-3 rounded-md hover:bg-gray-100';
+                itemEl.innerHTML = `<button data-template-id="${template.id}" class="apply-template-btn text-left flex-grow"><span class="font-semibold text-blue-600">${template.id.replace(/_/g, ' ')}</span></button><button data-template-id="${template.id}" class="delete-template-btn text-red-500 hover:text-red-700 p-1"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>`;
+                modalTemplateList.appendChild(itemEl);
+            });
+        }
+        async function loadProductTemplates() {
+            modalTemplateList.innerHTML = '<div class="loader-sm"></div>';
+            openModal('load-template-modal');
+            try { const querySnapshot = await getDocs(collection(db, "product_templates")); productTemplatesCache = querySnapshot.docs.map(doc => ({ id: doc.id, data: doc.data() })); renderTemplateList(); } 
+            catch (error) { console.error("템플릿 불러오기 오류: ", error); modalTemplateList.innerHTML = '<p class="text-center text-red-500">템플릿을 불러오는데 실패했습니다.</p>'; }
+        }
+        async function applyTemplate(templateName) {
+            const template = productTemplatesCache.find(t => t.id === templateName);
+            if (template && currentSessionId) {
+                const data = template.data;
+                const sessionEl = document.getElementById(currentSessionId);
+                sessionEl.querySelector('[data-field="companyName"]').value = data.companyName || '';
+                sessionEl.querySelector('[data-field="itemName"]').value = data.itemName || '';
+                sessionEl.querySelector('[data-field="grade"]').value = data.grade || '';
+                sessionEl.querySelector('[data-field="mesh"]').value = data.mesh || '';
+                sessionEl.querySelector('[data-field="tempMin"]').value = data.tempMin || '';
+                sessionEl.querySelector('[data-field="tempMax"]').value = data.tempMax || '';
+                sessionEl.querySelector('[data-field="packWeight"]').value = data.packWeight || '';
+                sessionEl.querySelector('[data-field="packSpec"]').value = data.packSpec || '';
+                closeModal('load-template-modal');
+                showNotification(`'${templateName.replace(/_/g, ' ')}' 템플릿을 적용했습니다.`);
+            } else { showNotification('템플릿 데이터를 찾을 수 없습니다.', 'error'); }
+        }
+        async function confirmDeleteTemplate() {
+            if (!templateIdToDelete) return;
+            try { await deleteDoc(doc(db, "product_templates", templateIdToDelete)); showNotification(`'${templateIdToDelete.replace(/_/g, ' ')}' 템플릿이 삭제되었습니다.`); closeModal('delete-confirm-modal'); loadProductTemplates(); } 
+            catch(error) { showNotification('템플릿 삭제 중 오류가 발생했습니다.', 'error'); console.error("템플릿 삭제 오류: ", error); }
+        }
+
+        // #작업지시서-저장/불러오기-함수
+        function resetWorkOrderForm() {
+            deliveryNotes.value = '';
+            dayShiftWorkersContainer.innerHTML = '';
+            nightShiftWorkersContainer.innerHTML = '';
+            for (let i = 1; i <= 3; i++) {
+                document.getElementById(`machine-${i}-day-sessions`).innerHTML = '';
+                document.getElementById(`machine-${i}-night-sessions`).innerHTML = '';
+            }
+        }
+        async function loadWorkOrder(date) {
+            resetWorkOrderForm();
+            if (!date) return;
+            const docRef = doc(db, "work_orders", date);
+            const docSnap = await getDoc(docRef);
+
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                deliveryNotes.value = data.deliveryNotes || '';
+                data.attendance?.day?.forEach(worker => addWorkerToUI(worker.name, 'day', worker));
+                data.attendance?.night?.forEach(worker => addWorkerToUI(worker.name, 'night', worker));
+                for (let i = 1; i <= 3; i++) {
+                    data.machines?.[i]?.day?.forEach(session => addWorkSession(i, 'day', session));
+                    data.machines?.[i]?.night?.forEach(session => addWorkSession(i, 'night', session));
+                }
+                showNotification(`${date} 작업지시서를 불러왔습니다.`);
+            } else {
+                showNotification(`${date}에 저장된 작업지시서가 없습니다.`);
+            }
+        }
+        async function saveWorkOrder() {
+            saveWorkOrderBtn.disabled = true;
+            saveWorkOrderBtn.textContent = '저장 중...';
+            const date = workOrderDateInput.value;
+            if (!date) { showNotification('날짜를 선택해주세요.', 'error'); saveWorkOrderBtn.disabled = false; saveWorkOrderBtn.textContent = '저장'; return; }
+            const workOrderData = { date: date, deliveryNotes: deliveryNotes.value, lastUpdatedBy: localStorage.getItem('currentUser'), lastUpdatedAt: new Date().toISOString(), attendance: { day: Array.from(dayShiftWorkersContainer.children).map(el => ({ name: el.querySelector('[data-name]').dataset.name, startTime: el.querySelector('.worker-starttime').value, endTime: el.querySelector('.worker-endtime').value, notes: el.querySelector('.worker-notes').value, })), night: Array.from(nightShiftWorkersContainer.children).map(el => ({ name: el.querySelector('[data-name]').dataset.name, startTime: el.querySelector('.worker-starttime').value, endTime: el.querySelector('.worker-endtime').value, notes: el.querySelector('.worker-notes').value, })), }, machines: {} };
+            for (let i = 1; i <= 3; i++) {
+                workOrderData.machines[i] = {
+                    day: Array.from(document.getElementById(`machine-${i}-day-sessions`).children).map(sessionEl => { const sessionData = { id: sessionEl.id }; sessionEl.querySelectorAll('[data-field]').forEach(input => { sessionData[input.dataset.field] = input.value; }); return sessionData; }),
+                    night: Array.from(document.getElementById(`machine-${i}-night-sessions`).children).map(sessionEl => { const sessionData = { id: sessionEl.id }; sessionEl.querySelectorAll('[data-field]').forEach(input => { sessionData[input.dataset.field] = input.value; }); return sessionData; })
+                };
+            }
+            try { await setDoc(doc(db, "work_orders", date), workOrderData); showNotification('작업지시서가 성공적으로 저장되었습니다.'); } 
+            catch (error) { console.error("작업지시서 저장 오류: ", error); showNotification('저장 중 오류가 발생했습니다.', 'error'); } 
+            finally { saveWorkOrderBtn.disabled = false; saveWorkOrderBtn.textContent = '저장'; }
+        }
+
+        // #추가-생산량-입력-페이지-함수
+        async function searchWorkOrders() {
+            const startDate = searchStartDateInput.value;
+            const endDate = searchEndDateInput.value;
+            if (!startDate || !endDate) {
+                showNotification('검색할 시작일과 종료일을 모두 선택해주세요.', 'error');
+                return;
+            }
+            workOrderListContainer.innerHTML = '<div class="loader"></div>';
+            prodInputDetailsContainer.classList.add('hidden');
+            
+            try {
+                const q = query(collection(db, "work_orders"), where("date", ">=", startDate), where("date", "<=", endDate));
+                const querySnapshot = await getDocs(q);
+                workOrderListContainer.innerHTML = '';
+                if (querySnapshot.empty) {
+                    workOrderListContainer.innerHTML = '<p class="text-gray-500 text-center">해당 기간에 작업지시서가 없습니다.</p>';
+                    return;
+                }
+                querySnapshot.forEach(doc => {
+                    const button = document.createElement('button');
+                    button.textContent = doc.id;
+                    button.className = 'w-full text-left p-3 rounded-md hover:bg-gray-100 transition-colors';
+                    button.onclick = () => displayWorkOrderForInput(doc.id);
+                    workOrderListContainer.appendChild(button);
+                });
+            } catch (error) {
+                console.error("작업지시서 검색 오류: ", error);
+                showNotification('검색 중 오류가 발생했습니다.', 'error');
+                workOrderListContainer.innerHTML = '<p class="text-red-500 text-center">오류 발생</p>';
+            }
+        }
+
+        async function displayWorkOrderForInput(date) {
+            const docRef = doc(db, "work_orders", date);
+            const docSnap = await getDoc(docRef);
+
+            if (docSnap.exists()) {
+                currentWorkOrderData = docSnap.data();
+                selectedWODateSpan.textContent = date;
+                prodInputFormContainer.innerHTML = '';
+
+                for (let i = 1; i <= 3; i++) {
+                    const machineContainer = document.createElement('div');
+                    machineContainer.innerHTML = `<h4 class="text-lg font-bold border-b mt-4 pb-1">${i}호기</h4>`;
+                    
+                    // 주간
+                    if (currentWorkOrderData.machines[i]?.day.length > 0) {
+                        machineContainer.innerHTML += `<h5 class="font-semibold text-yellow-600 mt-2">주간</h5>`;
+                        const dayContainer = document.createElement('div');
+                        dayContainer.className = 'space-y-4';
+                        currentWorkOrderData.machines[i].day.forEach(sessionData => {
+                            dayContainer.appendChild(createWorkSessionElement(i, 'day', sessionData, true));
+                        });
+                        machineContainer.appendChild(dayContainer);
+                    }
+
+                    // 야간
+                    if (currentWorkOrderData.machines[i]?.night.length > 0) {
+                        machineContainer.innerHTML += `<h5 class="font-semibold text-indigo-600 mt-2">야간</h5>`;
+                        const nightContainer = document.createElement('div');
+                        nightContainer.className = 'space-y-4';
+                        currentWorkOrderData.machines[i].night.forEach(sessionData => {
+                            nightContainer.appendChild(createWorkSessionElement(i, 'night', sessionData, true));
+                        });
+                        machineContainer.appendChild(nightContainer);
+                    }
+                    prodInputFormContainer.appendChild(machineContainer);
+                }
+                prodInputDetailsContainer.classList.remove('hidden');
+            }
+        }
+
+        async function saveProductionInput() {
+            if (!currentWorkOrderData) {
+                showNotification('먼저 작업지시서를 선택해주세요.', 'error');
+                return;
+            }
+            saveProdInputBtn.disabled = true;
+            saveProdInputBtn.textContent = '저장 중...';
+
+            const updatedMachines = JSON.parse(JSON.stringify(currentWorkOrderData.machines));
+
+            for (let i = 1; i <= 3; i++) {
+                // 주간 세션 업데이트
+                updatedMachines[i]?.day.forEach(session => {
+                    const sessionEl = document.getElementById(session.id);
+                    if (sessionEl) {
+                        session.bagNo = sessionEl.querySelector('[data-field="bagNo"]').value;
+                        session.prodQty = sessionEl.querySelector('[data-field="prodQty"]').value;
+                    }
+                });
+                // 야간 세션 업데이트
+                updatedMachines[i]?.night.forEach(session => {
+                    const sessionEl = document.getElementById(session.id);
+                    if (sessionEl) {
+                        session.bagNo = sessionEl.querySelector('[data-field="bagNo"]').value;
+                        session.prodQty = sessionEl.querySelector('[data-field="prodQty"]').value;
+                    }
+                });
+            }
+
+            const docRef = doc(db, "work_orders", currentWorkOrderData.date);
+            try {
+                await updateDoc(docRef, {
+                    machines: updatedMachines,
+                    lastUpdatedBy: localStorage.getItem('currentUser'),
+                    lastUpdatedAt: new Date().toISOString()
+                });
+                showNotification('생산량이 성공적으로 저장되었습니다.');
+            } catch (error) {
+                console.error("생산량 저장 오류: ", error);
+                showNotification('생산량 저장 중 오류가 발생했습니다.', 'error');
+            } finally {
+                saveProdInputBtn.disabled = false;
+                saveProdInputBtn.textContent = '수정사항 저장';
+            }
+        }
+
+
+        // #이벤트-리스너-연결
+        registerBtn.addEventListener('click', registerUser);
+        newUserInput.addEventListener('keyup', (event) => { if (event.key === 'Enter') registerUser(); });
+        logoutBtn.addEventListener('click', logout);
+        languageSelector.addEventListener('change', (e) => { localStorage.setItem('language', e.target.value); });
+        
+        mainMenuButtons.forEach(button => button.addEventListener('click', () => {
+            const pageId = button.dataset.page;
+            if (pageId) showPage(pageId); 
+            else showNotification('개발 중인 기능입니다.', 'error');
+        }));
+
+        backToMainBtn1.addEventListener('click', () => showPage('main-page'));
+        backToMainBtn2.addEventListener('click', () => showPage('main-page'));
+        modalCloseBtns.forEach(btn => btn.addEventListener('click', () => closeModal(btn.dataset.closeModal)));
+        modals.forEach(modal => modal.addEventListener('click', (e) => { if(e.target === modal) closeModal(modal.id); }));
+        document.querySelectorAll('.add-worker-btn').forEach(btn => btn.addEventListener('click', (e) => { 
+            currentShift = e.currentTarget.dataset.shift; 
+            openModal('worker-modal'); 
+        }));
+        deliveryNotes.addEventListener('input', function () { this.style.height = 'auto'; this.style.height = (this.scrollHeight) + 'px'; });
+        saveWorkOrderBtn.addEventListener('click', saveWorkOrder);
+        workOrderDateInput.addEventListener('change', (e) => loadWorkOrder(e.target.value));
+
+        // 작업지시 이벤트 위임
+        machineSectionsContainer.addEventListener('click', (e) => {
+            const addBtn = e.target.closest('.add-session-btn');
+            if (addBtn) { addWorkSession(addBtn.dataset.machine, addBtn.dataset.shift); }
+            const removeBtn = e.target.closest('.remove-session-btn');
+            if (removeBtn) { document.getElementById(removeBtn.dataset.removeId)?.remove(); }
+            const copyBtn = e.target.closest('.copy-to-night-btn');
+            if (copyBtn) {
+                const machineNum = copyBtn.dataset.machine;
+                const lastDaySession = document.getElementById(`machine-${machineNum}-day-sessions`).lastElementChild;
+                if (!lastDaySession) { showNotification('복사할 주간 세션이 없습니다.', 'error'); return; }
+                const dataToCopy = {};
+                lastDaySession.querySelectorAll('[data-field]').forEach(input => { dataToCopy[input.dataset.field] = input.value; });
+                addWorkSession(machineNum, 'night', dataToCopy);
+                showNotification(`${machineNum}호기 주간 마지막 세션이 야간으로 복사되었습니다.`);
+            }
+            const saveTemplateBtn = e.target.closest('.save-template-btn');
+            if (saveTemplateBtn) { saveProductTemplate(saveTemplateBtn.dataset.sessionId); }
+            const loadTemplateBtn = e.target.closest('.load-template-btn');
+            if (loadTemplateBtn) { currentSessionId = loadTemplateBtn.dataset.sessionId; loadProductTemplates(); }
+        });
+
+        // 템플릿 모달 이벤트 리스너
+        modalTemplateList.addEventListener('click', (e) => {
+            const applyBtn = e.target.closest('.apply-template-btn');
+            if (applyBtn) { applyTemplate(applyBtn.dataset.templateId); }
+            const deleteBtn = e.target.closest('.delete-template-btn');
+            if (deleteBtn) {
+                templateIdToDelete = deleteBtn.dataset.templateId;
+                deleteConfirmMessage.textContent = `'${templateIdToDelete.replace(/_/g, ' ')}' 템플릿을 정말로 삭제하시겠습니까?`;
+                openModal('delete-confirm-modal');
+            }
+        });
+        filterCompanyInput.addEventListener('input', renderTemplateList);
+        filterItemInput.addEventListener('input', renderTemplateList);
+        deleteConfirmBtn.addEventListener('click', confirmDeleteTemplate);
+
+        // 생산량 입력 페이지 이벤트 리스너
+        searchWorkOrdersBtn.addEventListener('click', searchWorkOrders);
+        saveProdInputBtn.addEventListener('click', saveProductionInput);
+
+        // #페이지-초기화-및-실시간-업데이트
+        document.addEventListener('DOMContentLoaded', () => {
+            const today = new Date();
+            const sevenDaysAgo = new Date(today);
+            sevenDaysAgo.setDate(today.getDate() - 7);
+            
+            workOrderDateInput.valueAsDate = today;
+            searchStartDateInput.valueAsDate = sevenDaysAgo;
+            searchEndDateInput.valueAsDate = today;
+
+            initializeMachineSections();
+            const currentUser = localStorage.getItem('currentUser');
+            if (currentUser) { login(currentUser); } 
+            else { showPage('login-page'); }
+            onSnapshot(collection(db, "users"), (snapshot) => {
+                loader.style.display = 'none';
+                const users = snapshot.docs.map(doc => doc.data());
+                renderUserList(users);
+                populateWorkerModal(users);
+            }, (error) => { console.error("Error fetching users: ", error); });
+        });
+    </script>
+</body>
+</html>
