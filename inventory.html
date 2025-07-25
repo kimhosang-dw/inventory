@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-key="appTitle">재고 관리 시스템</title>
+    <!-- Bootstrap CSS CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding-top: 56px; /* Adjust for fixed navbar */
+        }
+        .nav-link.active {
+            font-weight: bold;
+        }
+        .tab-content > .tab-pane {
+            display: none;
+        }
+        .tab-content > .active {
+            display: block;
+        }
+        #mainContent {
+            display: none; /* Initially hidden */
+        }
+        #loginScreen {
+            display: block; /* Initially visible */
+            max-width: 500px;
+            margin: 100px auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,.1);
+        }
+        .saved-users-container {
+            margin-top: 20px;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+        }
+        .saved-users-container .btn {
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        .navbar-text {
+            margin-right: 10px;
+        }
+        .lang-buttons .btn {
+            margin-left: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#" data-key="brandName">재고 관리</a>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" id="production-tab" data-bs-toggle="tab" href="#production" role="tab" aria-controls="production" aria-selected="true" data-key="productionManagement">생산 관리</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="inventory-tab" data-bs-toggle="tab" href="#inventory" role="tab" aria-controls="inventory" aria-selected="false" data-key="inventoryManagement">입/출고 관리</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="employee-tab" data-bs-toggle="tab" href="#employee" role="tab" aria-controls="employee" aria-selected="false" data-key="employeeManagement">직원 관리</a>
+                    </li>
+                </ul>
+                <span class="navbar-text" id="loggedInUserDisplay" style="display: none;">
+                    <span data-key="usernameDisplay">사용자명</span>: <strong id="currentUsername"></strong>
+                </span>
+                <button class="btn btn-outline-secondary" id="logoutButton" style="display: none;" onclick="logoutUser()" data-key="logoutButton">로그아웃</button>
+                <div class="lang-buttons ms-3">
+                    <button class="btn btn-sm btn-outline-primary" onclick="setLanguage('ko')">한국어</button>
+                    <button class="btn btn-sm btn-outline-primary" onclick="setLanguage('si')">සිංහල</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div id="loginScreen">
+        <h2 data-key="userLoginTitle">사용자 로그인</h2>
+        <div class="mb-3">
+            <label for="usernameInput" class="form-label" data-key="usernameLabel">사용자 이름</label>
+            <input type="text" class="form-control" id="usernameInput" placeholder="이름을 입력하세요" data-key="usernamePlaceholder">
+        </div>
+        <button class="btn btn-primary" onclick="loginUser()" data-key="loginButton">로그인</button>
+
+        <div class="saved-users-container">
+            <h5 data-key="savedUsersTitle">저장된 사용자</h5>
+            <div id="savedUserButtons">
+                <!-- Saved user buttons will be rendered here -->
+            </div>
+        </div>
+    </div>
+
+    <div id="mainContent">
+        <div class="container mt-4">
+            <div class="tab-content" id="myTabContent">
+                <!-- 생산 관리 Tab Pane -->
+                <div class="tab-pane fade show active" id="production" role="tabpanel" aria-labelledby="production-tab">
+                    <h1 data-key="productionManagement">생산 관리</h1>
+                    <div class="mb-4">
+                        <h2 data-key="addNewProductionRecord">새 생산 기록 추가</h2>
+                        <div class="mb-3">
+                            <label for="productionProductName" class="form-label" data-key="productNameLabel">제품명</label>
+                            <input type="text" class="form-control" id="productionProductName">
+                        </div>
+                        <div class="mb-3">
+                            <label for="productionQuantity" class="form-label" data-key="quantityLabel">수량</label>
+                            <input type="number" class="form-control" id="productionQuantity" value="0">
+                        </div>
+                        <div class="mb-3">
+                            <label for="productionDate" class="form-label" data-key="dateLabel">날짜</label>
+                            <input type="date" class="form-control" id="productionDate">
+                        </div>
+                        <button class="btn btn-primary" onclick="addProductionRecord()" data-key="addRecordButton">기록 추가</button>
+                    </div>
+
+                    <h2 data-key="productionRecordList">생산 기록 목록</h2>
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th data-key="idHeader">ID</th>
+                                <th data-key="productNameHeader">제품명</th>
+                                <th data-key="quantityHeader">수량</th>
+                                <th data-key="dateHeader">날짜</th>
+                                <th data-key="actionHeader">작업</th>
+                            </tr>
+                        </thead>
+                        <tbody id="productionRecordsTableBody">
+                            <!-- Production records will be inserted here by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- 입/출고 관리 Tab Pane -->
+                <div class="tab-pane fade" id="inventory" role="tabpanel" aria-labelledby="inventory-tab">
+                    <h1 data-key="inventoryManagement">입/출고 관리</h1>
+                    <div class="mb-4">
+                        <h2 data-key="addNewInventoryRecord">새 입/출고 기록 추가</h2>
+                        <div class="mb-3">
+                            <label for="inventoryProductName" class="form-label" data-key="productNameLabel">제품명</label>
+                            <input type="text" class="form-control" id="inventoryProductName">
+                        </div>
+                        <div class="mb-3">
+                            <label for="inventoryType" class="form-label" data-key="typeLabel">유형</label>
+                            <select class="form-select" id="inventoryType">
+                                <option value="입고" data-key="inboundOption">입고</option>
+                                <option value="출고" data-key="outboundOption">출고</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="inventoryQuantity" class="form-label" data-key="quantityLabel">수량</label>
+                            <input type="number" class="form-control" id="inventoryQuantity" value="0">
+                        </div>
+                        <div class="mb-3">
+                            <label for="inventoryDate" class="form-label" data-key="dateLabel">날짜</label>
+                            <input type="date" class="form-control" id="inventoryDate">
+                        </div>
+                        <button class="btn btn-primary" onclick="addInventoryRecord()" data-key="addRecordButton">기록 추가</button>
+                    </div>
+
+                    <h2 data-key="inventoryRecordList">입/출고 기록 목록</h2>
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th data-key="idHeader">ID</th>
+                                <th data-key="productNameHeader">제품명</th>
+                                <th data-key="typeHeader">유형</th>
+                                <th data-key="quantityHeader">수량</th>
+                                <th data-key="dateHeader">날짜</th>
+                                <th data-key="actionHeader">작업</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventoryRecordsTableBody">
+                            <!-- Inventory records will be inserted here by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- 직원 관리 Tab Pane -->
+                <div class="tab-pane fade" id="employee" role="tabpanel" aria-labelledby="employee-tab">
+                    <h1 data-key="employeeManagement">직원 관리</h1>
+                    <div class="mb-4">
+                        <h2 data-key="addNewEmployee">새 직원 추가</h2>
+                        <div class="mb-3">
+                            <label for="employeeName" class="form-label" data-key="nameLabel">이름</label>
+                            <input type="text" class="form-control" id="employeeName">
+                        </div>
+                        <div class="mb-3">
+                            <label for="employeePosition" class="form-label" data-key="positionLabel">직책</label>
+                            <input type="text" class="form-control" id="employeePosition">
+                        </div>
+                        <div class="mb-3">
+                            <label for="employeeHireDate" class="form-label" data-key="hireDateLabel">고용일</label>
+                            <input type="date" class="form-control" id="employeeHireDate">
+                        </div>
+                        <button class="btn btn-primary" onclick="addEmployee()" data-key="addEmployeeButton">직원 추가</button>
+                    </div>
+
+                    <h2 data-key="employeeList">직원 목록</h2>
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th data-key="idHeader">ID</th>
+                                <th data-key="nameHeader">이름</th>
+                                <th data-key="positionHeader">직책</th>
+                                <th data-key="hireDateHeader">고용일</th>
+                                <th data-key="actionHeader">작업</th>
+                            </tr>
+                        </thead>
+                        <tbody id="employeeRecordsTableBody">
+                            <!-- Employee records will be inserted here by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Data storage (using localStorage for persistence)
+        let productionRecords = JSON.parse(localStorage.getItem('productionRecords')) || [];
+        let inventoryRecords = JSON.parse(localStorage.getItem('inventoryRecords')) || [];
+        let employeeRecords = JSON.parse(localStorage.getItem('employeeRecords')) || [];
+        let savedUsers = JSON.parse(localStorage.getItem('savedUsers')) || [];
+        let currentUser = localStorage.getItem('currentUser') || null;
+        let currentLanguage = localStorage.getItem('currentLanguage') || 'ko'; // Default to Korean
+
+        const translations = {
+            ko: {
+                appTitle: '재고 관리 시스템',
+                brandName: '재고 관리',
+                productionManagement: '생산 관리',
+                inventoryManagement: '입/출고 관리',
+                employeeManagement: '직원 관리',
+                usernameDisplay: '사용자명',
+                logoutButton: '로그아웃',
+                userLoginTitle: '사용자 로그인',
+                usernameLabel: '사용자 이름',
+                usernamePlaceholder: '이름을 입력하세요',
+                loginButton: '로그인',
+                savedUsersTitle: '저장된 사용자',
+                addNewProductionRecord: '새 생산 기록 추가',
+                productNameLabel: '제품명',
+                quantityLabel: '수량',
+                dateLabel: '날짜',
+                addRecordButton: '기록 추가',
+                productionRecordList: '생산 기록 목록',
+                idHeader: 'ID',
+                productNameHeader: '제품명',
+                quantityHeader: '수량',
+                dateHeader: '날짜',
+                actionHeader: '작업',
+                noProductionRecords: '생산 기록이 없습니다.',
+                addNewInventoryRecord: '새 입/출고 기록 추가',
+                typeLabel: '유형',
+                inboundOption: '입고',
+                outboundOption: '출고',
+                inventoryRecordList: '입/출고 기록 목록',
+                typeHeader: '유형',
+                noInventoryRecords: '입/출고 기록이 없습니다.',
+                addNewEmployee: '새 직원 추가',
+                nameLabel: '이름',
+                positionLabel: '직책',
+                hireDateLabel: '고용일',
+                addEmployeeButton: '직원 추가',
+                employeeList: '직원 목록',
+                nameHeader: '이름',
+                positionHeader: '직책',
+                hireDateHeader: '고용일',
+                noEmployees: '등록된 직원이 없습니다.',
+                fillAllFields: '모든 필드를 채워주세요.',
+                quantityGreaterThanZero: '수량은 0보다 커야 합니다.',
+            },
+            si: {
+                appTitle: 'තොග කළමනාකරණ පද්ධතිය',
+                brandName: 'තොග කළමනාකරණය',
+                productionManagement: 'නිෂ්පාදන කළමනාකරණය',
+                inventoryManagement: 'තොග ඇතුළත් කිරීම/පිටතට ගැනීම',
+                employeeManagement: 'සේවක කළමනාකරණය',
+                usernameDisplay: 'පරිශීලක නාමය',
+                logoutButton: 'ලොග් අවුට්',
+                userLoginTitle: 'පරිශීලක පිවිසුම',
+                usernameLabel: 'පරිශීලක නාමය',
+                usernamePlaceholder: 'නම ඇතුලත් කරන්න',
+                loginButton: 'පිවිසෙන්න',
+                savedUsersTitle: 'සුරැකි පරිශීලකයින්',
+                addNewProductionRecord: 'නව නිෂ්පාදන වාර්තාවක් එක් කරන්න',
+                productNameLabel: 'නිෂ්පාදන නාමය',
+                quantityLabel: 'ප්‍රමාණය',
+                dateLabel: 'දිනය',
+                addRecordButton: 'වාර්තාව එක් කරන්න',
+                productionRecordList: 'නිෂ්පාදන වාර්තා ලැයිස්තුව',
+                idHeader: 'හැඳුනුම්පත',
+                productNameHeader: 'නිෂ්පාදන නාමය',
+                quantityHeader: 'ප්‍රමාණය',
+                dateHeader: 'දිනය',
+                actionHeader: 'ක්‍රියාව',
+                noProductionRecords: 'නිෂ්පාදන වාර්තා නොමැත.',
+                addNewInventoryRecord: 'නව තොග වාර්තාවක් එක් කරන්න',
+                typeLabel: 'වර්ගය',
+                inboundOption: 'ඇතුළත් කිරීම',
+                outboundOption: 'පිටතට ගැනීම',
+                inventoryRecordList: 'තොග වාර්තා ලැයිස්තුව',
+                typeHeader: 'වර්ගය',
+                noInventoryRecords: 'තොග වාර්තා නොමැත.',
+                addNewEmployee: 'නව සේවකයෙකු එක් කරන්න',
+                nameLabel: 'නම',
+                positionLabel: 'තනතුර',
+                hireDateLabel: 'බඳවා ගත් දිනය',
+                addEmployeeButton: 'සේවකයා එක් කරන්න',
+                employeeList: 'සේවක ලැයිස්තුව',
+                nameHeader: 'නම',
+                positionHeader: 'තනතුර',
+                hireDateHeader: 'බඳවා ගත් දිනය',
+                noEmployees: 'සේවකයින් ලියාපදිංචි වී නොමැත.',
+                fillAllFields: 'සියලුම ක්ෂේත්‍ර පුරවන්න.',
+                quantityGreaterThanZero: 'ප්‍රමාණය 0 ට වඩා වැඩි විය යුතුය.',
+            }
+        };
+
+        function setLanguage(lang) {
+            currentLanguage = lang;
+            localStorage.setItem('currentLanguage', lang);
+
+            document.querySelectorAll('[data-key]').forEach(element => {
+                const key = element.getAttribute('data-key');
+                if (translations[lang] && translations[lang][key]) {
+                    if (element.tagName === 'INPUT' && element.hasAttribute('placeholder')) {
+                        element.setAttribute('placeholder', translations[lang][key]);
+                    } else if (element.tagName === 'OPTION') {
+                        element.textContent = translations[lang][key];
+                    } else {
+                        element.textContent = translations[lang][key];
+                    }
+                }
+            });
+
+            // Special handling for alerts and dynamic content
+            // These will need to be updated in the respective functions
+        }
+
+        // --- User Management Functions ---
+        function renderUserButtons() {
+            const savedUserButtonsDiv = document.getElementById('savedUserButtons');
+            savedUserButtonsDiv.innerHTML = '';
+            savedUsers.forEach(user => {
+                const button = document.createElement('button');
+                button.className = 'btn btn-outline-secondary me-2';
+                button.textContent = user;
+                button.onclick = () => loginUser(user);
+                savedUserButtonsDiv.appendChild(button);
+            });
+        }
+
+        function loginUser(username = null) {
+            const usernameInput = document.getElementById('usernameInput');
+            let selectedUsername = username;
+
+            if (!selectedUsername) {
+                selectedUsername = usernameInput.value.trim();
+            }
+
+            if (selectedUsername) {
+                if (!savedUsers.includes(selectedUsername)) {
+                    savedUsers.push(selectedUsername);
+                    localStorage.setItem('savedUsers', JSON.stringify(savedUsers));
+                }
+                currentUser = selectedUsername;
+                localStorage.setItem('currentUser', currentUser);
+
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('mainContent').style.display = 'block';
+                document.getElementById('loggedInUserDisplay').style.display = 'inline';
+                document.getElementById('logoutButton').style.display = 'inline-block';
+                document.getElementById('currentUsername').textContent = currentUser;
+
+                // Render all records for the current user (data is still global for now)
+                renderProductionRecords();
+                renderInventoryRecords();
+                renderEmployeeRecords();
+
+                // Clear username input after login
+                usernameInput.value = '';
+                renderUserButtons(); // Re-render buttons to show new user if added
+            } else {
+                alert(translations[currentLanguage].fillAllFields); // Use translated alert
+            }
+        }
+
+        function logoutUser() {
+            currentUser = null;
+            localStorage.removeItem('currentUser');
+            document.getElementById('loginScreen').style.display = 'block';
+            document.getElementById('mainContent').style.display = 'none';
+            document.getElementById('loggedInUserDisplay').style.display = 'none';
+            document.getElementById('logoutButton').style.display = 'none';
+            document.getElementById('currentUsername').textContent = '';
+            // Optionally clear data or reload to initial state
+            // productionRecords = []; localStorage.removeItem('productionRecords');
+            // inventoryRecords = []; localStorage.removeItem('inventoryRecords');
+            // employeeRecords = []; localStorage.removeItem('employeeRecords');
+            // renderProductionRecords(); renderInventoryRecords(); renderEmployeeRecords();
+        }
+
+        // --- Production Management Functions ---
+        function renderProductionRecords() {
+            const tableBody = document.getElementById('productionRecordsTableBody');
+            tableBody.innerHTML = '';
+            if (productionRecords.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="5">${translations[currentLanguage].noProductionRecords}</td></tr>`;
+                return;
+            }
+            productionRecords.forEach(record => {
+                const row = tableBody.insertRow();
+                row.insertCell().textContent = record.id;
+                row.insertCell().textContent = record.productName;
+                row.insertCell().textContent = record.quantity;
+                row.insertCell().textContent = record.date;
+                const actionCell = row.insertCell();
+                const deleteButton = document.createElement('button');
+                deleteButton.className = 'btn btn-danger btn-sm';
+                deleteButton.textContent = translations[currentLanguage].actionHeader; // Use translated text for button
+                deleteButton.onclick = () => deleteProductionRecord(record.id);
+                actionCell.appendChild(deleteButton);
+            });
+        }
+
+        function addProductionRecord() {
+            const productNameInput = document.getElementById('productionProductName');
+            const quantityInput = document.getElementById('productionQuantity');
+            const dateInput = document.getElementById('productionDate');
+
+            const productName = productNameInput.value;
+            const quantity = parseInt(quantityInput.value);
+            const date = dateInput.value;
+
+            if (productName && quantity > 0 && date) {
+                const newId = productionRecords.length > 0 ? Math.max(...productionRecords.map(r => r.id)) + 1 : 1;
+                const newRecord = { id: newId, productName, quantity, date };
+                productionRecords.push(newRecord);
+                localStorage.setItem('productionRecords', JSON.stringify(productionRecords));
+                renderProductionRecords();
+                productNameInput.value = '';
+                quantityInput.value = '0';
+                dateInput.value = '';
+            } else {
+                alert(`${translations[currentLanguage].fillAllFields} (${translations[currentLanguage].quantityGreaterThanZero})`);
+            }
+        }
+
+        function deleteProductionRecord(id) {
+            productionRecords = productionRecords.filter(record => record.id !== id);
+            localStorage.setItem('productionRecords', JSON.stringify(productionRecords));
+            renderProductionRecords();
+        }
+
+        // --- Inventory Management Functions ---
+        function renderInventoryRecords() {
+            const tableBody = document.getElementById('inventoryRecordsTableBody');
+            tableBody.innerHTML = '';
+            if (inventoryRecords.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="6">${translations[currentLanguage].noInventoryRecords}</td></tr>`;
+                return;
+            }
+            inventoryRecords.forEach(record => {
+                const row = tableBody.insertRow();
+                row.insertCell().textContent = record.id;
+                row.insertCell().textContent = record.productName;
+                row.insertCell().textContent = record.type;
+                row.insertCell().textContent = record.quantity;
+                row.insertCell().textContent = record.date;
+                const actionCell = row.insertCell();
+                const deleteButton = document.createElement('button');
+                deleteButton.className = 'btn btn-danger btn-sm';
+                deleteButton.textContent = translations[currentLanguage].actionHeader; // Use translated text for button
+                deleteButton.onclick = () => deleteInventoryRecord(record.id);
+                actionCell.appendChild(deleteButton);
+            });
+        }
+
+        function addInventoryRecord() {
+            const productNameInput = document.getElementById('inventoryProductName');
+            const typeInput = document.getElementById('inventoryType');
+            const quantityInput = document.getElementById('inventoryQuantity');
+            const dateInput = document.getElementById('inventoryDate');
+
+            const productName = productNameInput.value;
+            const type = typeInput.value;
+            const quantity = parseInt(quantityInput.value);
+            const date = dateInput.value;
+
+            if (productName && quantity > 0 && date) {
+                const newId = inventoryRecords.length > 0 ? Math.max(...inventoryRecords.map(r => r.id)) + 1 : 1;
+                const newRecord = { id: newId, productName, type, quantity, date };
+                inventoryRecords.push(newRecord);
+                localStorage.setItem('inventoryRecords', JSON.stringify(inventoryRecords));
+                renderInventoryRecords();
+                productNameInput.value = '';
+                typeInput.value = '입고';
+                quantityInput.value = '0';
+                dateInput.value = '';
+            } else {
+                alert(`${translations[currentLanguage].fillAllFields} (${translations[currentLanguage].quantityGreaterThanZero})`);
+            }
+        }
+
+        function deleteInventoryRecord(id) {
+            inventoryRecords = inventoryRecords.filter(record => record.id !== id);
+            localStorage.setItem('inventoryRecords', JSON.stringify(inventoryRecords));
+            renderInventoryRecords();
+        }
+
+        // --- Employee Management Functions ---
+        function renderEmployeeRecords() {
+            const tableBody = document.getElementById('employeeRecordsTableBody');
+            tableBody.innerHTML = '';
+            if (employeeRecords.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="5">${translations[currentLanguage].noEmployees}</td></tr>`;
+                return;
+            }
+            employeeRecords.forEach(record => {
+                const row = tableBody.insertRow();
+                row.insertCell().textContent = record.id;
+                row.insertCell().textContent = record.name;
+                row.insertCell().textContent = record.position;
+                row.insertCell().textContent = record.hireDate;
+                const actionCell = row.insertCell();
+                const deleteButton = document.createElement('button');
+                deleteButton.className = 'btn btn-danger btn-sm';
+                deleteButton.textContent = translations[currentLanguage].actionHeader; // Use translated text for button
+                deleteButton.onclick = () => deleteEmployee(record.id);
+                actionCell.appendChild(deleteButton);
+            });
+        }
+
+        function addEmployee() {
+            const nameInput = document.getElementById('employeeName');
+            const positionInput = document.getElementById('employeePosition');
+            const hireDateInput = document.getElementById('employeeHireDate');
+
+            const name = nameInput.value;
+            const position = positionInput.value;
+            const hireDate = hireDateInput.value;
+
+            if (name && position && hireDate) {
+                const newId = employeeRecords.length > 0 ? Math.max(...employeeRecords.map(e => e.id)) + 1 : 1;
+                const newRecord = { id: newId, name, position, hireDate };
+                employeeRecords.push(newRecord);
+                localStorage.setItem('employeeRecords', JSON.stringify(employeeRecords));
+                renderEmployeeRecords();
+                nameInput.value = '';
+                positionInput.value = '';
+                hireDateInput.value = '';
+            } else {
+                alert(translations[currentLanguage].fillAllFields);
+            }
+        }
+
+        function deleteEmployee(id) {
+            employeeRecords = employeeRecords.filter(record => record.id !== id);
+            localStorage.setItem('employeeRecords', JSON.stringify(employeeRecords));
+            renderEmployeeRecords();
+        }
+
+        // Initial render when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            setLanguage(currentLanguage); // Set initial language
+            renderUserButtons(); // Render saved user buttons first
+
+            if (currentUser) {
+                // If a user was previously logged in, bypass login screen
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('mainContent').style.display = 'block';
+                document.getElementById('loggedInUserDisplay').style.display = 'inline';
+                document.getElementById('logoutButton').style.display = 'inline-block';
+                document.getElementById('currentUsername').textContent = currentUser;
+
+                renderProductionRecords();
+                renderInventoryRecords();
+                renderEmployeeRecords();
+            } else {
+                // Otherwise, show login screen
+                document.getElementById('loginScreen').style.display = 'block';
+                document.getElementById('mainContent').style.display = 'none';
+                document.getElementById('loggedInUserDisplay').style.display = 'none';
+                document.getElementById('logoutButton').style.display = 'none';
+            }
+
+            // Activate the first tab by default
+            const firstTab = new bootstrap.Tab(document.getElementById('production-tab'));
+            firstTab.show();
+        });
+    </script>
+</body>
+</html>
